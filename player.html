@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DHT Stream — Player</title>
+  <title>DigiFlix — Player</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600&display=swap" rel="stylesheet" />
@@ -196,7 +196,7 @@
     <div class="loading-overlay" id="loadingOverlay">
       <div class="spinner-ring"></div>
       <div class="loading-title" id="loadingTitle">Connecting to swarm…</div>
-      <div class="loading-sub" id="loadingSub">Looking for peers. Popular titles connect in ~10 seconds.</div>
+      <div class="loading-sub" id="loadingSub">Searching for WebTorrent peers. Popular titles connect in 15–30s — obscure titles may take longer or have no seeders.</div>
       <img class="loading-poster" id="loadingPoster" alt="" style="display:none" />
     </div>
 
@@ -316,17 +316,19 @@
 
       torrent = client.add(magnetUri, { announce: [
         'wss://tracker.openwebtorrent.com',
-        'wss://tracker.btorrent.xyz',
-        'wss://tracker.fastcast.nz'
+        'wss://tracker.webtorrent.dev',
+        'wss://tracker.files.fm:7073/announce',
+        'wss://spacetradersapi-chatbox.herokuapp.com:443/announce',
+        'wss://peertube.cpy.re:443/tracker/socket',
       ]});
 
-      // Dead swarm timeout: 30s
+      // Dead swarm timeout: 60s — WebRTC peer discovery is slower than regular torrents
       deadTimer = setTimeout(() => {
         if (!torrent || torrent.numPeers === 0) {
           document.getElementById('deadSwarm').classList.remove('hidden');
           document.getElementById('loadingOverlay').classList.add('hidden');
         }
-      }, 30000);
+      }, 60000);
 
       torrent.on('ready', () => {
         // Find largest video file

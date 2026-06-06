@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DHT Stream</title>
+  <title>DigiFlix</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
@@ -335,11 +335,14 @@
     let watchlist = JSON.parse(localStorage.getItem('dht_watchlist') || '[]');
 
     // ── Trackers for magnet ──
+    // WebTorrent runs in the browser and can ONLY use WebSocket (wss://) trackers.
+    // UDP trackers are ignored by browsers entirely — always use wss:// here.
     const TRACKERS = [
-      'udp://tracker.opentrackr.org:1337/announce',
-      'udp://open.tracker.cl:1337/announce',
-      'udp://tracker.torrent.eu.org:451/announce',
-      'udp://exodus.desync.com:6969/announce'
+      'wss://tracker.openwebtorrent.com',
+      'wss://tracker.webtorrent.dev',
+      'wss://tracker.files.fm:7073/announce',
+      'wss://spacetradersapi-chatbox.herokuapp.com:443/announce',
+      'wss://peertube.cpy.re:443/tracker/socket',
     ].map(t => `&tr=${encodeURIComponent(t)}`).join('');
 
     function buildMagnet(torrent, title) {
