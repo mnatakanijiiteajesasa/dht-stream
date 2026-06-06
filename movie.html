@@ -350,9 +350,10 @@
       if (!movieId) { document.getElementById('loadingState').textContent = 'No movie specified.'; return; }
 
       // Fetch YTS movie detail
-      const ytsRes = await fetch(`${WORKER}/movie?movie_id=${movieId}&with_cast=true`).then(r => r.json()).catch(() => null);
-      if (!ytsRes?.data?.movie) { document.getElementById('loadingState').textContent = 'Movie not found.'; return; }
-      movieData = ytsRes.data.movie;
+      const ytsRes = await fetch(`${WORKER}/movie?id=${movieId}&with_cast=true`).then(r => r.json()).catch(() => null);
+      const movie = ytsRes?.data?.movie || ytsRes?.movie || null;
+      if (!movie) { document.getElementById('loadingState').textContent = 'Movie not found.'; return; }
+      movieData = movie;
       document.title = `${movieData.title} — DHT Stream`;
 
       // Fetch TMDB metadata in parallel
