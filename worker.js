@@ -8,6 +8,7 @@
  *   GET /meta?imdb_id=                                 → TMDB find by IMDb ID
  *   GET /trending                                      → TMDB trending movies (week)
  *   GET /search?query=                                 → TMDB search (for richer metadata)
+ *   GET /stats                                         → Admin stats (mock)
  *
  * Deploy:
  *   1. Install Wrangler:  npm install -g wrangler
@@ -161,6 +162,36 @@ async function handleSearch(params, tmdbKey, origin) {
   return corsResponse(JSON.stringify(data), 200, origin);
 }
 
+// GET /stats — admin stats (mock)
+async function handleStats(origin) {
+  // Get total movie count from YTS (no filters)
+  try {
+    const movieData = await fetchYTS(`/list_movies.json?limit=1`);
+    const totalMovies = movieData.data?.movie_count || 0;
+    // Mock some stats
+    const stats = {
+      totalMovies,
+      activeTorrents: Math.floor(Math.random() * 1200), // random for demo
+      peersSharing: Math.floor(Math.random() * 5000),
+      streamsNow: Math.floor(Math.random() * 300),
+      avgDownloadSpeed: `${(Math.random() * 8 + 2).toFixed(1)} MB/s`,
+      updatedAt: new Date().toISOString(),
+    };
+    return corsResponse(JSON.stringify(stats), 200, origin);
+  } catch (err) {
+    // fallback mock data
+    const stats = {
+      totalMovies: 0,
+      activeTorrents: 0,
+      peersSharing: 0,
+      streamsNow: 0,
+      avgDownloadSpeed: "0.0 MB/s",
+      updatedAt: new Date().toISOString(),
+    };
+    return corsResponse(JSON.stringify(stats), 200, origin);
+  }
+}
+
 // ─── Main Handler ─────────────────────────────────────────────────────────────
 
 export default {
@@ -207,6 +238,9 @@ export default {
           if (!tmdbKey)
             return error("TMDB_API_KEY secret not set", 500, origin);
           return await handleSearch(params, tmdbKey, origin);
+
+        case "/stats":
+          return await handleStats(origin);
 
         case "/health":
           return corsResponse(

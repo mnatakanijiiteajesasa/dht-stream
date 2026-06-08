@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DHT Stream Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #18181f;
+      --border: rgba(255,255,255,0.07);
+      --text: #f0eee8;
+      --text-muted: #7a7a8a;
+      --text-dim: #3a3a4a;
+      --accent: #e8c97a;
+      --accent-dim: rgba(232,201,122,0.12);
+      --red: #e8706a;
+      --radius: 6px;
+      --font-serif: 'DM Serif Display', Georgia, serif;
+      --font-sans: 'DM Sans', system-ui, sans-serif;
+    }
+    html { background: var(--bg); color: var(--text); font-family: var(--font-sans); }
+    body { min-height: 100vh; margin: 0; display: flex; flex-direction: column; }
+    header {
+      background: rgba(10,10,15,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo { font-family: var(--font-serif); font-size: 1.4rem; color: var(--text); text-decoration: none; }
+    .logo span { color: var(--accent); }
+    nav a { margin-left: 1.5rem; font-size: 0.85rem; font-weight: 500; color: var(--text-muted); text-decoration: none; text-transform: uppercase; letter-spacing: 0.03em; transition: color 0.2s; }
+    nav a:hover, nav a.active { color: var(--text); }
+    nav a.active { color: var(--accent); }
+    main { flex: 1; padding: 2rem; overflow-y: auto; }
+    .stats-grid { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-top: 2rem; }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+    .stat-value { font-size: 2.2rem; font-weight: 600; color: var(--accent); margin: 0.5rem 0; }
+    .stat-label { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .stat-sub { font-size: 0.8rem; color: var(--text-dim); margin-top: 0.3rem; }
+    .refresh-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 0.5rem 1rem; border-radius: var(--radius); cursor: pointer; font-family: var(--font-sans); font-size: 0.9rem; transition: all 0.2s; }
+    .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .timestamp { font-size: 0.8rem; color: var(--text-muted); text-align: right; margin-top: 1rem; }
+    @media (max-width: 600px) {
+      header { padding: 1rem; }
+      .logo { font-size: 1.2rem; }
+      nav a { margin-left: 0.8rem; font-size: 0.75rem; }
+      main { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="logo" href="index.html">Digi<span>Flix</span></a>
+    <nav>
+      <a href="index.html">← Back to Site</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Admin Dashboard</h1>
+    <p>Monitor DHT swarm health and streaming activity.</p>
+
+    <div class="stats-grid" id="statsGrid">
+      <!-- Stats will be injected here -->
+    </div>
+
+    <button class="refresh-btn" id="refreshBtn">Refresh Stats</button>
+    <div class="timestamp" id="timestamp"></div>
+  </main>
+
+  <script>
+    const WORKER = ''; // relative to current origin
+
+    let statsInterval = null;
+
+    async function fetchStats() {
+      try {
+        const res = await fetch(`${WORKER}/stats`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        renderStats(data);
+        document.getElementById('timestamp').textContent = `Last updated: ${new Date(data.updatedAt).toLocaleString()}`;
+      } catch (err) {
+        console.error('Failed to fetch stats:', err);
+        document.getElementById('statsGrid').innerHTML = `<div class="stat-card" style="grid-column: 1 / -1;">
+          <div class="stat-label">Error</div>
+          <div class="stat-value">–</div>
+          <div class="stat-sub">Failed to load stats</div>
+        </div>`;
+      }
+    }
+
+    function renderStats(stats) {
+      const grid = document.getElementById('statsGrid');
+      grid.innerHTML = `
+        <div class="stat-card">
+          <div class="stat-label">Total Movies</div>
+          <div class="stat-value">${stats.totalMovies?.toLocaleString() ?? 0}</div>
+          <div class="stat-sub">in catalog</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Active Torrents</div>
+          <div class="stat-value">${stats.activeTorrents ?? 0}</div>
+          <div class="statublock">with seeders</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Peers Sharing</div>
+          <div class="stat-value">${stats.peersSharing ?? 0}</div>
+          <div class="stat-sub">connected peers</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Streams Now</div>
+          <div class="stat-value">${stats.streamsNow ?? 0}</div>
+          <div class="stat-sub">active streams</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Avg Download Speed</div>
+          <div class="stat-value">${stats.avgDownloadSpeed ?? '0.0 MB/s'}</div>
+          <div class="stat-sub">across swarm</div>
+        </div>
+      `;
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+      fetchStats();
+    });
+
+    // Auto-refresh every 15 seconds
+    function startAutoRefresh() {
+      if (statsInterval) clearInterval(statsInterval);
+      statsInterval = setInterval(fetchStats, 15000);
+    }
+
+    // Initial load
+    fetchStats();
+    startAutoRefresh();
+
+    // Cleanup on page hide
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        clearInterval(statsInterval);
+        statsInterval = null;
+      } else {
+        startAutoRefresh();
+      }
+    });
+  </script>
+</body>
+</html>
