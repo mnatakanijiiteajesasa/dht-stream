@@ -245,6 +245,9 @@
     const movieId  = params.get('movie_id') || '';
     const imdbId   = params.get('imdb_id') || '';
 
+    log('Params:', { magnet: !!magnet, title, poster, movieId, imdbId });
+    if (magnet) log('Magnet length:', magnet.length);
+
     document.title = `${title} — DHT Stream`;
     document.getElementById('topTitle').textContent = title;
     document.getElementById('loadingTitle').textContent = title;
@@ -277,6 +280,12 @@
     let uiHideTimer = null;
     let uiVisible = true;
 
+    // Debug logging
+    const debug = true;
+    function log(...args) {
+      if (debug) console.log('[Player]', ...args);
+    }
+
     function showUI() {
       document.getElementById('topBar').classList.remove('hidden');
       document.getElementById('statsBar').classList.remove('hidden');
@@ -303,6 +312,7 @@
     }
 
     function startTorrent(magnetUri) {
+      log('startTorrent called with magnetUri length:', magnetUri?.length);
       // Clear dead timer from previous attempt
       clearTimeout(deadTimer);
       document.getElementById('deadSwarm').classList.add('hidden');
@@ -321,9 +331,11 @@
         'wss://spacetradersapi-chatbox.herokuapp.com:443/announce',
         'wss://peertube.cpy.re:443/tracker/socket',
       ]});
+      log('Torrent added:', torrent);
 
       // Dead swarm timeout: 60s — WebRTC peer discovery is slower than regular torrents
       deadTimer = setTimeout(() => {
+        log('Dead timer fired:', !torrent ? 'no torrent' : `peers:${torrent.numPeers}`);
         if (!torrent || torrent.numPeers === 0) {
           document.getElementById('deadSwarm').classList.remove('hidden');
           document.getElementById('loadingOverlay').classList.add('hidden');
@@ -331,24 +343,30 @@
       }, 60000);
 
       torrent.on('ready', () => {
+        log('Torrent ready:', torrent);
+        log('Number of files:', torrent.files.length);
         // Find largest video file
         const video = torrent.files.reduce((a, b) => a.length > b.length ? a : b);
+        log('Selected file:', video.name, 'length:', video.length);
         video.renderTo('#videoPlayer');
         document.getElementById('loadingSub').textContent = `Found ${torrent.numPeers} peer${torrent.numPeers === 1 ? '' : 's'}. Buffering…`;
       });
 
       torrent.on('download', () => {
+        log('Download progress:', torrent.progress.toFixed(3), 'peers:', torrent.numPeers, 'speed:', torrent.downloadSpeed);
         // Once we're downloading, clear the dead timer if peers exist
         if (torrent.numPeers > 0) clearTimeout(deadTimer);
       });
 
       document.getElementById('videoPlayer').addEventListener('playing', () => {
+        log('Video playing');
         document.getElementById('loadingOverlay').classList.add('hidden');
         clearTimeout(deadTimer);
         uiHideTimer = setTimeout(hideUI, 4000);
       });
 
       document.getElementById('videoPlayer').addEventListener('waiting', () => {
+        log('Video waiting (buffering)');
         // Re-show buffering overlay if stalled
         if (!document.getElementById('loadingOverlay').classList.contains('hidden')) return;
         document.getElementById('loadingSub').textContent = 'Buffering…';
@@ -356,6 +374,7 @@
 
       torrent.on('error', err => {
         console.error('Torrent error:', err);
+        log('Torrent error:', err);
         document.getElementById('loadingTitle').textContent = 'Connection error';
         document.getElementById('loadingSub').textContent = String(err);
       });
@@ -400,6 +419,7 @@
 
     // ── Retry ──
     document.getElementById('retryBtn').addEventListener('click', () => {
+      log('Retry button clicked');
       document.getElementById('deadSwarm').classList.add('hidden');
       startTorrent(magnet);
     });
@@ -465,6 +485,7 @@
     }
 
     // ── Start ──
+    log('Initial startTorrent call');
     startTorrent(magnet);
   </script>
 </body>
