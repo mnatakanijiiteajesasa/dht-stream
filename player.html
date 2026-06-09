@@ -238,6 +238,11 @@
   </div>
 
   <script>
+     // Debug logging
+    const debug = true;
+    function log(...args) {
+      if (debug) console.log('[Player]', ...args);
+    }
     const params   = new URLSearchParams(location.search);
     const magnet   = params.get('magnet');
     const title    = params.get('title') || 'Movie';
@@ -280,11 +285,7 @@
     let uiHideTimer = null;
     let uiVisible = true;
 
-    // Debug logging
-    const debug = true;
-    function log(...args) {
-      if (debug) console.log('[Player]', ...args);
-    }
+   
 
     function showUI() {
       document.getElementById('topBar').classList.remove('hidden');
