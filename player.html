@@ -309,7 +309,7 @@
     if (!magnet) {
       document.getElementById('loadingTitle').textContent = 'No magnet link';
       document.getElementById('loadingSub').textContent = 'Return to browse and select a movie to play.';
-      return;
+      throw new Error('No magnet link provided in URL');
     }
 
     function startTorrent(magnetUri) {
