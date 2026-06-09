@@ -351,7 +351,26 @@
         log('Selected file:', video.name, 'length:', video.length);
         video.renderTo('#videoPlayer');
         document.getElementById('loadingSub').textContent = `Found ${torrent.numPeers} peer${torrent.numPeers === 1 ? '' : 's'}. Buffering…`;
+        const videoEl = document.getElementById('videoPlayer');
+        videoEl.muted = true; // Start muted to allow autoplay in some browsers
+        function tryPlay() {
+          videoEl.play().catch(err => {
+            // autoplay locked keep muted and wait for user interaction
+
+            console.warn('[Player]Autoplay failed:', err);
+          });
+        }
+        // try as soon we have enough metadata 
+        videoEl.addEventListener('loadedmetadata', tryplay, { once: true });
+        // fallback if metadata never fires (some browsers) or takes too long
+        setTimeout(() => {
+          if (!videoEl.readyState) tryPlay();
+        }, 2000);        
       });
+
+      document.addEventListener('click', ()=> {
+        if (videoEl.muted) videoEl.muted = false;
+      }, { once: true });
 
       torrent.on('download', () => {
         log('Download progress:', torrent.progress.toFixed(3), 'peers:', torrent.numPeers, 'speed:', torrent.downloadSpeed);
