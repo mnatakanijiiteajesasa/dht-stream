@@ -360,12 +360,12 @@
             console.warn('[Player]Autoplay failed:', err);
           });
         }
-        // try as soon we have enough metadata 
-        videoEl.addEventListener('loadedmetadata', tryplay, { once: true });
+        // try as soon we have enough metadata
+        videoEl.addEventListener('loadedmetadata', tryPlay, { once: true });
         // fallback if metadata never fires (some browsers) or takes too long
         setTimeout(() => {
           if (!videoEl.readyState) tryPlay();
-        }, 2000);        
+        }, 2000);
       });
 
       document.addEventListener('click', ()=> {
