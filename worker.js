@@ -8,6 +8,7 @@
  *   GET /meta?imdb_id=                                 → TMDB find by IMDb ID
  *   GET /trending                                      → TMDB trending movies (week)
  *   GET /search?query=                                 → TMDB search (for richer metadata)
+ *   GET /series?sort=&genre=&page=&rating=&order=      → TMDB discover TV series
  *   GET /stats                                         → Admin stats (mock)
  *
  * Deploy:
