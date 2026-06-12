@@ -239,6 +239,11 @@ export default {
             return error("TMDB_API_KEY secret not set", 500, origin);
           return await handleSearch(params, tmdbKey, origin);
 
+        case "/series":
+          if (!tmdbKey)
+            return error("TMDB_API_KEY secret not set", 500, origin);
+          return await handleSeries(params, tmdbKey, origin);
+
         case "/stats":
           return await handleStats(origin);
 
