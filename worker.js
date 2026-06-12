@@ -192,6 +192,44 @@ async function handleStats(origin) {
   }
 }
 
+// GET /series — discover TV series from TMDB
+async function handleSeries(params, tmdbKey, origin) {
+  // TMDB discover/tv parameters
+  const sortByMap = {
+    date_added: "first_air_date.desc",
+    popularity: "popularity.desc",
+    vote_average: "vote_average.desc",
+    vote_count: "vote_count.desc",
+  };
+  const sort = params.get("sort") || "date_added";
+  const order = params.get("order") || "desc";
+  let sort_by = sortByMap[sort];
+  if (!sort_by) {
+    // fallback to default
+    sort_by = "first_air_date.desc";
+  }
+  const page = params.get("page") || "1";
+  const genre = params.get("genre") || "";
+  const rating = params.get("rating") || "0"; // minimum vote average
+
+  const qs = new URLSearchParams({
+    api_key: tmdbKey,
+    language: "en-US",
+    sort_by,
+    page,
+    ...(genre && { with_genres: genre }),
+    ...(rating && { "vote_average.gte": rating }),
+  });
+
+  try {
+    const data = await fetchJSON(`${TMDB_BASE}/discover/tv?${qs}`);
+    return corsResponse(JSON.stringify(data), 200, origin);
+  } catch (err) {
+    console.error("TMDB discover/tv error:", err.message);
+    return error(`Failed to fetch series: ${err.message}`, 502, origin);
+  }
+}
+
 // ─── Main Handler ─────────────────────────────────────────────────────────────
 
 export default {
