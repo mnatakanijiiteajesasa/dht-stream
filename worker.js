@@ -1,6 +1,6 @@
 /**
  * DHT Stream — Cloudflare Worker
- * API proxy for YTS + TMDB. Handles CORS so the browser frontend can call both APIs freely.
+ * API proxy for YTS + TMDB + EZTV. Handles CORS so the browser frontend can call all APIs freely.
  *
  * Routes:
  *   GET /movies?query=&genre=&quality=&page=&limit=    → YTS list_movies
@@ -10,6 +10,13 @@
  *   GET /search?query=                                 → TMDB search (for richer metadata)
  *   GET /series?sort=&genre=&page=&rating=&order=      → TMDB discover TV series
  *   GET /stats                                         → Admin stats (mock)
+ *   GET /health                                        → Health check
+ *
+ *   ── TV Shows (new) ──────────────────────────────────────────────────────────
+ *   GET /shows?query=&page=                            → TMDB TV search / popular
+ *   GET /show?tmdb_id=                                 → TMDB TV show detail + seasons + cast
+ *   GET /episodes?imdb_id=tt...&season=1               → EZTV episode torrents, TMDB-enriched
+ *   GET /episode-meta?tmdb_id=&season=&episode=        → TMDB single episode detail
  *
  * Deploy:
  *   1. Install Wrangler:  npm install -g wrangler
@@ -23,22 +30,29 @@
  *
  * After deploy, set your TMDB key as a secret:
  *   wrangler secret put TMDB_API_KEY
- *   (paste your key when prompted — never hardcode it)
  */
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
-// Keep upstream URLs as single variables — easy to swap if YTS changes domain
-const YTS_BASE = "https://yts.mx/api/v2";
-const YTS_FALLBACK = "https://yts.lt/api/v2"; // fallback if primary is down
-const TMDB_BASE = "https://api.themoviedb.org/3";
+const YTS_BASE     = "https://yts.mx/api/v2";
+const YTS_FALLBACK = "https://yts.lt/api/v2";   // fallback if primary is down
+const TMDB_BASE    = "https://api.themoviedb.org/3";
+const EZTV_BASE    = "https://eztvx.to/api";
+
+// WSS-only trackers — UDP trackers are completely unusable in browsers.
+// EZTV magnets ship with UDP trackers so we strip and replace them.
+const WSS_TRACKERS = [
+  "wss://tracker.openwebtorrent.com",
+  "wss://tracker.webtorrent.dev",
+  "wss://tracker.files.fm:7073/announce",
+];
 
 // Allowed origins — update after Cloudflare Pages deploy with your actual domain
 const ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "http://localhost:5500",
   "http://127.0.0.1:5500",
-  // "https://your-project.pages.dev",  ← uncomment and replace after Pages deploy
+  "https://dht-stream.mogakanewton0.workers.dev",
 ];
 
 // ─── CORS Headers ────────────────────────────────────────────────────────────
@@ -88,18 +102,35 @@ function error(message, status, origin) {
   return corsResponse(JSON.stringify({ error: message }), status, origin);
 }
 
-// ─── Route Handlers ──────────────────────────────────────────────────────────
+// Strip all existing trackers from a magnet and append WSS-only ones.
+// EZTV magnets include UDP trackers which are dead weight in a browser.
+function patchMagnet(magnet) {
+  if (!magnet) return magnet;
+  const base = magnet.split("&tr=")[0];
+  const trackers = WSS_TRACKERS.map(t => `&tr=${encodeURIComponent(t)}`).join("");
+  return base + trackers;
+}
+
+// Quality score for picking the best torrent per episode
+function qualityScore(filename = "") {
+  if (/1080p/i.test(filename)) return 4;
+  if (/720p/i.test(filename))  return 3;
+  if (/480p/i.test(filename))  return 2;
+  return 1;
+}
+
+// ─── Movie Handlers ──────────────────────────────────────────────────────────
 
 // GET /movies — browse & search the YTS catalog
 async function handleMovies(params, origin) {
-  const query = params.get("query") || "";
-  const genre = params.get("genre") || "";
+  const query   = params.get("query")   || "";
+  const genre   = params.get("genre")   || "";
   const quality = params.get("quality") || "";
-  const page = params.get("page") || "1";
-  const limit = params.get("limit") || "20";
-  const sort = params.get("sort") || "date_added";
-  const order = params.get("order") || "desc";
-  const rating = params.get("rating") || "0";
+  const page    = params.get("page")    || "1";
+  const limit   = params.get("limit")   || "20";
+  const sort    = params.get("sort")    || "date_added";
+  const order   = params.get("order")   || "desc";
+  const rating  = params.get("rating")  || "0";
 
   const qs = new URLSearchParams({
     limit,
@@ -107,8 +138,8 @@ async function handleMovies(params, origin) {
     sort_by: sort,
     order_by: order,
     minimum_rating: rating,
-    ...(query && { query_term: query }),
-    ...(genre && { genre }),
+    ...(query   && { query_term: query }),
+    ...(genre   && { genre }),
     ...(quality && { quality }),
   });
 
@@ -141,7 +172,7 @@ async function handleMeta(params, tmdbKey, origin) {
   return corsResponse(JSON.stringify({ movie }), 200, origin);
 }
 
-// GET /trending — TMDB weekly trending (great for homepage hero)
+// GET /trending — TMDB weekly trending movies (great for homepage hero)
 async function handleTrending(tmdbKey, origin) {
   const data = await fetchJSON(
     `${TMDB_BASE}/trending/movie/week?api_key=${tmdbKey}`
@@ -156,86 +187,218 @@ async function handleSearch(params, tmdbKey, origin) {
 
   const page = params.get("page") || "1";
   const data = await fetchJSON(
-    `${TMDB_BASE}/search/movie?api_key=${tmdbKey}&query=${encodeURIComponent(
-      query
-    )}&page=${page}`
+    `${TMDB_BASE}/search/movie?api_key=${tmdbKey}&query=${encodeURIComponent(query)}&page=${page}`
   );
   return corsResponse(JSON.stringify(data), 200, origin);
 }
 
-// GET /stats — admin stats (mock)
-async function handleStats(origin) {
-  // Get total movie count from YTS (no filters)
-  try {
-    const movieData = await fetchYTS(`/list_movies.json?limit=1`);
-    const totalMovies = movieData.data?.movie_count || 0;
-    // Mock some stats
-    const stats = {
-      totalMovies,
-      activeTorrents: Math.floor(Math.random() * 1200), // random for demo
-      peersSharing: Math.floor(Math.random() * 5000),
-      streamsNow: Math.floor(Math.random() * 300),
-      avgDownloadSpeed: `${(Math.random() * 8 + 2).toFixed(1)} MB/s`,
-      updatedAt: new Date().toISOString(),
-    };
-    return corsResponse(JSON.stringify(stats), 200, origin);
-  } catch (err) {
-    // fallback mock data
-    const stats = {
-      totalMovies: 0,
-      activeTorrents: 0,
-      peersSharing: 0,
-      streamsNow: 0,
-      avgDownloadSpeed: "0.0 MB/s",
-      updatedAt: new Date().toISOString(),
-    };
-    return corsResponse(JSON.stringify(stats), 200, origin);
-  }
-}
-
 // GET /series — discover TV series from TMDB
 async function handleSeries(params, tmdbKey, origin) {
-  // TMDB discover/tv parameters
   const sortByMap = {
-    date_added: "first_air_date.desc",
-    popularity: "popularity.desc",
+    date_added:   "first_air_date.desc",
+    popularity:   "popularity.desc",
     vote_average: "vote_average.desc",
-    vote_count: "vote_count.desc",
+    vote_count:   "vote_count.desc",
   };
-  const sort = params.get("sort") || "date_added";
-  const order = params.get("order") || "desc";
-  let sort_by = sortByMap[sort];
-  if (!sort_by) {
-    // fallback to default
-    sort_by = "first_air_date.desc";
-  }
-  const page = params.get("page") || "1";
-  const genre = params.get("genre") || "";
-  const rating = params.get("rating") || "0"; // minimum vote average
+
+  const sort   = params.get("sort")   || "date_added";
+  const page   = params.get("page")   || "1";
+  const genre  = params.get("genre")  || "";
+  const rating = params.get("rating") || "0";
+
+  const sort_by = sortByMap[sort] || "first_air_date.desc";
 
   const qs = new URLSearchParams({
     api_key: tmdbKey,
     language: "en-US",
     sort_by,
     page,
-    ...(genre && { with_genres: genre }),
+    ...(genre  && { with_genres: genre }),
     ...(rating && { "vote_average.gte": rating }),
   });
 
+  const data = await fetchJSON(`${TMDB_BASE}/discover/tv?${qs}`);
+  return corsResponse(JSON.stringify(data), 200, origin);
+}
+
+// GET /stats — admin stats (mock)
+async function handleStats(origin) {
   try {
-    const data = await fetchJSON(`${TMDB_BASE}/discover/tv?${qs}`);
-    return corsResponse(JSON.stringify(data), 200, origin);
-  } catch (err) {
-    console.error("TMDB discover/tv error:", err.message);
-    return error(`Failed to fetch series: ${err.message}`, 502, origin);
+    const movieData   = await fetchYTS(`/list_movies.json?limit=1`);
+    const totalMovies = movieData.data?.movie_count || 0;
+    const stats = {
+      totalMovies,
+      activeTorrents:   Math.floor(Math.random() * 1200),
+      peersSharing:     Math.floor(Math.random() * 5000),
+      streamsNow:       Math.floor(Math.random() * 300),
+      avgDownloadSpeed: `${(Math.random() * 8 + 2).toFixed(1)} MB/s`,
+      updatedAt:        new Date().toISOString(),
+    };
+    return corsResponse(JSON.stringify(stats), 200, origin);
+  } catch {
+    return corsResponse(JSON.stringify({
+      totalMovies: 0, activeTorrents: 0, peersSharing: 0,
+      streamsNow: 0, avgDownloadSpeed: "0.0 MB/s",
+      updatedAt: new Date().toISOString(),
+    }), 200, origin);
   }
+}
+
+// ─── TV Show Handlers (new) ───────────────────────────────────────────────────
+
+// GET /shows?query=&page=
+// No query → popular shows from TMDB. With query → TV search.
+async function handleShows(params, tmdbKey, origin) {
+  const query = params.get("query") || "";
+  const page  = params.get("page")  || "1";
+
+  const endpoint = query
+    ? `${TMDB_BASE}/search/tv?api_key=${tmdbKey}&query=${encodeURIComponent(query)}&page=${page}`
+    : `${TMDB_BASE}/tv/popular?api_key=${tmdbKey}&page=${page}`;
+
+  const data = await fetchJSON(endpoint);
+  return corsResponse(JSON.stringify(data), 200, origin);
+}
+
+// GET /show?tmdb_id=1396
+// Full show detail: seasons list, genres, network, status, cast.
+async function handleShow(params, tmdbKey, origin) {
+  const tmdb_id = params.get("tmdb_id");
+  if (!tmdb_id) return error("Missing required param: tmdb_id", 400, origin);
+
+  const [detail, credits] = await Promise.all([
+    fetchJSON(`${TMDB_BASE}/tv/${tmdb_id}?api_key=${tmdbKey}&append_to_response=external_ids`),
+    fetchJSON(`${TMDB_BASE}/tv/${tmdb_id}/aggregate_credits?api_key=${tmdbKey}`),
+  ]);
+
+  return corsResponse(JSON.stringify({ ...detail, credits }), 200, origin);
+}
+
+// GET /episodes?imdb_id=tt0903747&season=1
+// Fetches all EZTV torrents for a show filtered to a season.
+// Picks best quality per episode, patches magnets to WSS-only trackers,
+// then enriches with TMDB episode metadata (title, overview, still image).
+async function handleEpisodes(params, tmdbKey, origin) {
+  const imdb_id = params.get("imdb_id");
+  const season  = params.get("season");
+  if (!imdb_id) return error("Missing required param: imdb_id", 400, origin);
+
+  // EZTV wants the numeric IMDB ID without the "tt" prefix
+  const numericId = imdb_id.replace(/^tt/, "");
+
+  // Paginate through EZTV (max 100 per page) until we have everything
+  let page        = 1;
+  let allTorrents = [];
+  let totalCount  = null;
+
+  while (true) {
+    const ezData = await fetchJSON(
+      `${EZTV_BASE}/get-torrents?imdb_id=${numericId}&limit=100&page=${page}`
+    );
+    if (!ezData.torrents || ezData.torrents.length === 0) break;
+
+    allTorrents = allTorrents.concat(ezData.torrents);
+    if (totalCount === null) totalCount = ezData.torrents_count;
+    if (allTorrents.length >= totalCount) break;
+    page++;
+  }
+
+  // Filter to the requested season
+  const filtered = season
+    ? allTorrents.filter(t => String(t.season) === String(season))
+    : allTorrents;
+
+  // Pick best quality per episode; ties broken by seed count
+  const byEpisode = {};
+  for (const t of filtered) {
+    const key      = `${t.season}x${t.episode}`;
+    const existing = byEpisode[key];
+    if (
+      !existing ||
+      qualityScore(t.filename) > qualityScore(existing.filename) ||
+      (qualityScore(t.filename) === qualityScore(existing.filename) && t.seeds > existing.seeds)
+    ) {
+      byEpisode[key] = t;
+    }
+  }
+
+  // Build clean episode list with WSS-patched magnets
+  const episodes = Object.values(byEpisode)
+    .sort((a, b) => Number(a.episode) - Number(b.episode))
+    .map(t => ({
+      season:     Number(t.season),
+      episode:    Number(t.episode),
+      title:      t.title,
+      filename:   t.filename,
+      seeds:      t.seeds,
+      peers:      t.peers,
+      size_bytes: t.size_bytes,
+      magnet:     patchMagnet(t.magnet_url),
+      screenshot: t.large_screenshot ? `https:${t.large_screenshot}` : null,
+    }));
+
+  // Enrich with TMDB episode metadata (best-effort — don't fail the whole request)
+  if (season && tmdbKey) {
+    try {
+      const findData = await fetchJSON(
+        `${TMDB_BASE}/find/${imdb_id}?external_source=imdb_id&api_key=${tmdbKey}`
+      );
+      const tmdbShow = findData.tv_results?.[0];
+
+      if (tmdbShow) {
+        const seasonData = await fetchJSON(
+          `${TMDB_BASE}/tv/${tmdbShow.id}/season/${season}?api_key=${tmdbKey}`
+        );
+        const tmdbEps = seasonData.episodes || [];
+
+        for (const ep of episodes) {
+          const tmdb = tmdbEps.find(e => e.episode_number === ep.episode);
+          if (tmdb) {
+            ep.tmdb_title    = tmdb.name;
+            ep.tmdb_overview = tmdb.overview;
+            ep.tmdb_still    = tmdb.still_path
+              ? `https://image.tmdb.org/t/p/w300${tmdb.still_path}`
+              : null;
+            ep.air_date      = tmdb.air_date;
+            ep.vote_average  = tmdb.vote_average;
+          }
+        }
+      }
+    } catch {
+      // TMDB enrichment is best-effort — silently continue without it
+    }
+  }
+
+  return corsResponse(JSON.stringify({
+    imdb_id,
+    season:         season ? Number(season) : null,
+    total_torrents: allTorrents.length,
+    episodes,
+  }), 200, origin);
+}
+
+// GET /episode-meta?tmdb_id=1396&season=1&episode=3
+// Single episode detail: name, overview, still image, runtime, guest stars.
+async function handleEpisodeMeta(params, tmdbKey, origin) {
+  const tmdb_id = params.get("tmdb_id");
+  const season  = params.get("season");
+  const episode = params.get("episode");
+
+  if (!tmdb_id || !season || !episode) {
+    return error("Missing required params: tmdb_id, season, episode", 400, origin);
+  }
+
+  const data = await fetchJSON(
+    `${TMDB_BASE}/tv/${tmdb_id}/season/${season}/episode/${episode}?api_key=${tmdbKey}`
+  );
+  return corsResponse(JSON.stringify(data), 200, origin);
 }
 
 // ─── Main Handler ─────────────────────────────────────────────────────────────
 
 export default {
   async fetch(request, env) {
-    const url = new URL(request.url);
+    const url    = new URL(request.url);
     const origin = request.headers.get("Origin") || "*";
     const params = url.searchParams;
 
@@ -252,11 +415,11 @@ export default {
       return error("Method not allowed", 405, origin);
     }
 
-    // TMDB key comes from a Wrangler secret — never exposed in code
     const tmdbKey = env.TMDB_API_KEY;
 
     try {
       switch (url.pathname) {
+        // ── Movies ──────────────────────────────────────────────────────────
         case "/movies":
           return await handleMovies(params, origin);
 
@@ -264,23 +427,19 @@ export default {
           return await handleMovie(params, origin);
 
         case "/meta":
-          if (!tmdbKey)
-            return error("TMDB_API_KEY secret not set", 500, origin);
+          if (!tmdbKey) return error("TMDB_API_KEY secret not set", 500, origin);
           return await handleMeta(params, tmdbKey, origin);
 
         case "/trending":
-          if (!tmdbKey)
-            return error("TMDB_API_KEY secret not set", 500, origin);
+          if (!tmdbKey) return error("TMDB_API_KEY secret not set", 500, origin);
           return await handleTrending(tmdbKey, origin);
 
         case "/search":
-          if (!tmdbKey)
-            return error("TMDB_API_KEY secret not set", 500, origin);
+          if (!tmdbKey) return error("TMDB_API_KEY secret not set", 500, origin);
           return await handleSearch(params, tmdbKey, origin);
 
         case "/series":
-          if (!tmdbKey)
-            return error("TMDB_API_KEY secret not set", 500, origin);
+          if (!tmdbKey) return error("TMDB_API_KEY secret not set", 500, origin);
           return await handleSeries(params, tmdbKey, origin);
 
         case "/stats":
@@ -288,10 +447,28 @@ export default {
 
         case "/health":
           return corsResponse(
-            JSON.stringify({ status: "ok", version: "1.0.0" }),
+            JSON.stringify({ status: "ok", version: "1.1.0" }),
             200,
             origin
           );
+
+        // ── TV Shows (new) ────────────────────────────────────────────────
+        case "/shows":
+          if (!tmdbKey) return error("TMDB_API_KEY secret not set", 500, origin);
+          return await handleShows(params, tmdbKey, origin);
+
+        case "/show":
+          if (!tmdbKey) return error("TMDB_API_KEY secret not set", 500, origin);
+          return await handleShow(params, tmdbKey, origin);
+
+        case "/episodes":
+          // tmdbKey optional — EZTV works without it,
+          // but episode titles/stills won't be enriched
+          return await handleEpisodes(params, tmdbKey, origin);
+
+        case "/episode-meta":
+          if (!tmdbKey) return error("TMDB_API_KEY secret not set", 500, origin);
+          return await handleEpisodeMeta(params, tmdbKey, origin);
 
         default:
           return error(`Unknown route: ${url.pathname}`, 404, origin);
