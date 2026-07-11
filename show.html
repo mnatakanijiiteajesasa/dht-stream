@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DigiFlix Show</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="show.js" defer></script>
+</head>
+<body>
+  <nav>
+    <a class="nav-logo" href="index.html">Digi<span>Flix</span></a>
+    <div class="nav-links">
+      <a href="index.html">Browse</a>
+      <a href="index.html?watchlist=1">Watchlist</a>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <h1 id="showTitle">Loading <em>show.</em></h1>
+    <p id="showMeta">Fetching seasons and episodes...</p>
+  </section>
+
+  <main class="grid-section">
+    <div class="section-meta">
+      <span class="section-title">Overview</span>
+      <span class="section-count" id="showRating"></span>
+    </div>
+    <div class="empty empty-left" id="showOverview"></div>
+
+    <div class="filters-bar subfilters">
+      <span class="filter-label">Season</span>
+      <div class="genre-pills" id="seasonPills"></div>
+    </div>
+
+    <div class="section-meta">
+      <span class="section-title" id="episodeTitle">Episodes</span>
+      <span class="section-count" id="episodeCount"></span>
+    </div>
+    <div class="movie-grid" id="episodeGrid" aria-live="polite"></div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

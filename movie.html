@@ -332,7 +332,14 @@
 
     let selectedTorrent = null;
     let movieData = null;
-    let watchlist = JSON.parse(localStorage.getItem('dht_watchlist') || '[]');
+    let watchlist = (() => {
+      try {
+        const raw = localStorage.getItem('dht_watchlist_v2') || localStorage.getItem('dht_watchlist') || '{}';
+        const p   = JSON.parse(raw);
+        return Array.isArray(p) ? p.map(Number) : (p.movies || []).map(Number);
+      } catch { return []; }
+    })();
+
 
     // ── Trackers for magnet ──
     // WebTorrent runs in the browser and can ONLY use WebSocket (wss://) trackers.
@@ -465,7 +472,7 @@
       const idx = watchlist.indexOf(id);
       if (idx === -1) { watchlist.push(id); showToast('Added to watchlist'); }
       else { watchlist.splice(idx, 1); showToast('Removed from watchlist'); }
-      localStorage.setItem('dht_watchlist', JSON.stringify(watchlist));
+      localStorage.setItem('dht_watchlist_v2', JSON.stringify({ movies: watchlist.map(String), shows: [] }));
       updateWatchlistBtn();
     });
 
