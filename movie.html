@@ -29,7 +29,6 @@
     html { background: var(--bg); color: var(--text); font-family: var(--font-sans); }
     body { min-height: 100vh; }
 
-    /* ── NAV ── */
     nav {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
       display: flex; align-items: center; gap: 1rem;
@@ -50,7 +49,6 @@
     }
     .nav-logo span { color: var(--accent); }
 
-    /* ── BACKDROP ── */
     .backdrop-wrap {
       position: relative; margin-top: 60px;
       width: 100%; height: clamp(220px, 40vw, 420px);
@@ -65,7 +63,6 @@
       background: linear-gradient(to bottom, transparent 30%, var(--bg) 100%);
     }
 
-    /* ── MAIN LAYOUT ── */
     .detail-layout {
       display: grid;
       grid-template-columns: 200px 1fr;
@@ -76,7 +73,6 @@
       position: relative; z-index: 10;
     }
 
-    /* ── POSTER COL ── */
     .poster-col { display: flex; flex-direction: column; gap: 1rem; }
     .detail-poster {
       width: 100%; border-radius: 8px;
@@ -86,7 +82,6 @@
       background: var(--surface2);
     }
 
-    /* ── ACTIONS ── */
     .quality-buttons { display: flex; flex-direction: column; gap: 0.5rem; }
     .quality-label {
       font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em;
@@ -133,7 +128,6 @@
       background: var(--accent-dim);
     }
 
-    /* ── INFO COL ── */
     .info-col { padding-top: 1rem; }
 
     .badges { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
@@ -166,7 +160,6 @@
       max-width: 640px; margin-bottom: 2rem;
     }
 
-    /* ── CAST ── */
     .section-head {
       font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
       text-transform: uppercase; color: var(--text-dim);
@@ -179,9 +172,7 @@
       margin-bottom: 2rem;
     }
     .cast-grid::-webkit-scrollbar { display: none; }
-    .cast-card {
-      flex-shrink: 0; width: 80px; text-align: center;
-    }
+    .cast-card { flex-shrink: 0; width: 80px; text-align: center; }
     .cast-photo {
       width: 72px; height: 72px; border-radius: 50%;
       object-fit: cover; border: 2px solid var(--border);
@@ -196,7 +187,6 @@
     .cast-name { font-size: 0.7rem; font-weight: 500; color: var(--text-muted); line-height: 1.3; }
     .cast-char { font-size: 0.65rem; color: var(--text-dim); }
 
-    /* ── RELATED ── */
     .related-row {
       display: flex; gap: 1rem; overflow-x: auto;
       scrollbar-width: none; padding-bottom: 2rem;
@@ -217,14 +207,12 @@
     .related-title { font-size: 0.75rem; font-weight: 500; color: var(--text); margin-bottom: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .related-year { font-size: 0.68rem; color: var(--text-muted); }
 
-    /* ── LOADING ── */
     .loading-state {
       display: flex; align-items: center; justify-content: center;
       min-height: 60vh; font-family: var(--font-serif);
       font-size: 1.2rem; color: var(--text-muted); font-style: italic;
     }
 
-    /* ── SKELETON ── */
     @keyframes shimmer {
       0%   { background-position: -600px 0; }
       100% { background-position: 600px 0; }
@@ -236,7 +224,6 @@
       border-radius: 4px;
     }
 
-    /* ── TOAST ── */
     .toast {
       position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(80px);
       background: var(--surface2); border: 1px solid var(--border);
@@ -245,13 +232,10 @@
     }
     .toast.show { transform: translateX(-50%) translateY(0); }
 
-    /* ── RESPONSIVE ── */
     @media (max-width: 680px) {
       .detail-layout {
         grid-template-columns: 140px 1fr;
-        gap: 1.5rem;
-        padding: 0 1rem;
-        margin-top: -60px;
+        gap: 1.5rem; padding: 0 1rem; margin-top: -60px;
       }
       .backdrop-wrap { height: 200px; }
       .quality-btn, .play-btn, .watchlist-btn { font-size: 0.78rem; }
@@ -282,23 +266,19 @@
   <div id="loadingState" class="loading-state">Loading…</div>
 
   <div id="detailLayout" class="detail-layout" style="display:none">
-    <!-- POSTER COL -->
     <div class="poster-col">
       <img id="posterImg" class="detail-poster" alt="" />
       <div class="quality-buttons">
         <div class="quality-label">Select Quality</div>
         <div id="qualityBtns"></div>
       </div>
-      <button class="play-btn" id="playBtn" disabled>
-        ▶ &nbsp;Play
-      </button>
+      <button class="play-btn" id="playBtn" disabled>▶ &nbsp;Play</button>
       <button class="watchlist-btn" id="watchlistBtn">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
         <span id="watchlistBtnLabel">Save to Watchlist</span>
       </button>
     </div>
 
-    <!-- INFO COL -->
     <div class="info-col">
       <div class="badges" id="badgesRow"></div>
       <h1 class="detail-title" id="detailTitle">—</h1>
@@ -306,13 +286,11 @@
       <div class="meta-row" id="metaRow"></div>
       <p class="synopsis" id="synopsis"></p>
 
-      <!-- Cast -->
       <div id="castSection" style="display:none">
         <div class="section-head">Cast</div>
         <div class="cast-grid" id="castGrid"></div>
       </div>
 
-      <!-- Related -->
       <div id="relatedSection" style="display:none">
         <div class="section-head">More like this</div>
         <div class="related-row" id="relatedRow"></div>
@@ -323,33 +301,36 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    const WORKER = 'https://fancy-bar-b4d2.mogakanewton0.workers.dev';
+    const WORKER   = 'https://fancy-bar-b4d2.mogakanewton0.workers.dev';
     const TMDB_IMG = 'https://image.tmdb.org/t/p/';
 
-    const params = new URLSearchParams(location.search);
+    const params  = new URLSearchParams(location.search);
     const movieId = params.get('id');
     const imdbId  = params.get('imdb_id');
 
     let selectedTorrent = null;
-    let movieData = null;
+    let movieData       = null;
+
+    // ── Watchlist — reads dht_watchlist_v2, migrates legacy dht_watchlist ──
     let watchlist = (() => {
       try {
-        const raw = localStorage.getItem('dht_watchlist_v2') || localStorage.getItem('dht_watchlist') || '{}';
-        const p   = JSON.parse(raw);
+        const raw = localStorage.getItem('dht_watchlist_v2')
+                 || localStorage.getItem('dht_watchlist')
+                 || '{}';
+        const p = JSON.parse(raw);
         return Array.isArray(p) ? p.map(Number) : (p.movies || []).map(Number);
       } catch { return []; }
     })();
 
-
-    // ── Trackers for magnet ──
-    // WebTorrent runs in the browser and can ONLY use WebSocket (wss://) trackers.
-    // UDP trackers are ignored by browsers entirely — always use wss:// here.
+    // ── WSS trackers — must match worker.js WSS_TRACKERS exactly ─────────────
+    // These are ALL known public WebSocket trackers as of 2025.
+    // UDP trackers (opentrackr, etc.) are silently ignored by browsers.
     const TRACKERS = [
       'wss://tracker.openwebtorrent.com',
       'wss://tracker.webtorrent.dev',
       'wss://tracker.files.fm:7073/announce',
-      'wss://spacetradersapi-chatbox.herokuapp.com:443/announce',
-      'wss://peertube.cpy.re:443/tracker/socket',
+      'wss://tracker.btorrent.xyz',
+      'wss://tracker.fastcast.nz',
     ].map(t => `&tr=${encodeURIComponent(t)}`).join('');
 
     function buildMagnet(torrent, title) {
@@ -357,16 +338,21 @@
     }
 
     async function load() {
-      if (!movieId) { document.getElementById('loadingState').textContent = 'No movie specified.'; return; }
+      if (!movieId) {
+        document.getElementById('loadingState').textContent = 'No movie specified.';
+        return;
+      }
 
-      // Fetch YTS movie detail
-      const ytsRes = await fetch(`${WORKER}/movie?id=${movieId}&with_cast=true`).then(r => r.json()).catch(() => null);
+      const ytsRes = await fetch(`${WORKER}/movie?id=${movieId}&with_cast=true`)
+        .then(r => r.json()).catch(() => null);
       const movie = ytsRes?.data?.movie || ytsRes?.movie || null;
-      if (!movie) { document.getElementById('loadingState').textContent = 'Movie not found.'; return; }
+      if (!movie) {
+        document.getElementById('loadingState').textContent = 'Movie not found.';
+        return;
+      }
       movieData = movie;
-      document.title = `${movieData.title} — DHT Stream`;
+      document.title = `${movieData.title} — DigiFlix`;
 
-      // Fetch TMDB metadata in parallel
       const tmdbRes = imdbId
         ? await fetch(`${WORKER}/meta?imdb_id=${imdbId}`).then(r => r.json()).catch(() => null)
         : null;
@@ -376,26 +362,27 @@
     }
 
     function render(m, tmdb) {
-      document.getElementById('loadingState').style.display = 'none';
-      document.getElementById('detailLayout').style.display = 'grid';
+      document.getElementById('loadingState').style.display  = 'none';
+      document.getElementById('detailLayout').style.display  = 'grid';
 
       // Backdrop
-      const backdrop = tmdb?.movie_results?.[0]?.backdrop_path || tmdb?.tv_results?.[0]?.backdrop_path;
+      const backdrop = tmdb?.movie?.backdrop_path;
       if (backdrop) {
-        const wrap = document.getElementById('backdropWrap');
         document.getElementById('backdropImg').src = `${TMDB_IMG}w1280${backdrop}`;
-        wrap.style.display = 'block';
+        document.getElementById('backdropWrap').style.display = 'block';
       }
 
-      // Poster
-      const tmdbPoster = tmdb?.movie_results?.[0]?.poster_path;
-      const poster = tmdbPoster ? `${TMDB_IMG}w342${tmdbPoster}` : m.large_cover_image || m.medium_cover_image || '';
+      // Poster — prefer TMDB, fall back to YTS
+      const tmdbPoster = tmdb?.movie?.poster_path;
+      const poster = tmdbPoster
+        ? `${TMDB_IMG}w342${tmdbPoster}`
+        : m.large_cover_image || m.medium_cover_image || '';
       const posterEl = document.getElementById('posterImg');
       if (poster) posterEl.src = poster;
       posterEl.alt = m.title;
 
       // Badges
-      const rating = tmdb?.movie_results?.[0]?.vote_average || m.rating;
+      const rating = tmdb?.movie?.vote_average || m.rating;
       let badges = '';
       if (rating) badges += `<span class="badge rating-badge">★ ${Number(rating).toFixed(1)}</span>`;
       (m.genres || []).slice(0, 3).forEach(g => { badges += `<span class="badge">${g}</span>`; });
@@ -403,28 +390,26 @@
 
       // Title & tagline
       document.getElementById('detailTitle').textContent = m.title;
-      const tagline = tmdb?.movie_results?.[0]?.overview?.split('.')[0];
+      const tagline = tmdb?.movie?.overview?.split('.')[0];
       if (tagline) document.getElementById('detailTagline').textContent = tagline + '.';
 
       // Meta row
       const meta = [];
-      if (m.year) meta.push(`<span class="meta-item">📅 ${m.year}</span>`);
-      if (m.runtime) meta.push(`<span class="meta-item">⏱ ${m.runtime} min</span>`);
-      if (m.language) meta.push(`<span class="meta-item">🌐 ${m.language.toUpperCase()}</span>`);
+      if (m.year)       meta.push(`<span class="meta-item">📅 ${m.year}</span>`);
+      if (m.runtime)    meta.push(`<span class="meta-item">⏱ ${m.runtime} min</span>`);
+      if (m.language)   meta.push(`<span class="meta-item">🌐 ${m.language.toUpperCase()}</span>`);
       if (m.mpa_rating) meta.push(`<span class="meta-item">🎬 ${m.mpa_rating}</span>`);
       document.getElementById('metaRow').innerHTML = meta.join('<span class="meta-sep"> · </span>');
 
       // Synopsis
-      const synopsis = tmdb?.movie_results?.[0]?.overview || m.description_full || m.description_intro || '';
+      const synopsis = tmdb?.movie?.overview || m.description_full || m.description_intro || '';
       document.getElementById('synopsis').textContent = synopsis;
 
       // Quality buttons
-      const torrents = m.torrents || [];
+      const torrents    = m.torrents || [];
       const qualityBtns = document.getElementById('qualityBtns');
       qualityBtns.innerHTML = torrents.map((t, i) => `
-        <button class="quality-btn ${i === 0 ? 'selected' : ''}"
-          data-idx="${i}"
-          onclick="selectQuality(this, ${i})">
+        <button class="quality-btn ${i === 0 ? 'selected' : ''}" data-idx="${i}" onclick="selectQuality(this, ${i})">
           <span>${t.quality} · ${t.type || 'web'}</span>
           <span class="quality-size">${t.size}</span>
         </button>
@@ -450,7 +435,6 @@
         `).join('');
       }
 
-      // Watchlist button
       updateWatchlistBtn();
     }
 
@@ -464,21 +448,24 @@
       if (!selectedTorrent || !movieData) return;
       const magnet = buildMagnet(selectedTorrent, movieData.title);
       const poster = document.getElementById('posterImg').src || '';
-      location.href = `player.html?magnet=${encodeURIComponent(magnet)}&title=${encodeURIComponent(movieData.title)}&poster=${encodeURIComponent(poster)}&movie_id=${movieId}&imdb_id=${imdbId || ''}`;
+      location.href = `player.html?magnet=${encodeURIComponent(magnet)}`
+        + `&title=${encodeURIComponent(movieData.title)}`
+        + `&poster=${encodeURIComponent(poster)}`
+        + `&movie_id=${movieId}`
+        + `&imdb_id=${imdbId || ''}`;
     });
 
     document.getElementById('watchlistBtn').addEventListener('click', () => {
-      const id = parseInt(movieId);
+      const id  = parseInt(movieId);
       const idx = watchlist.indexOf(id);
       if (idx === -1) { watchlist.push(id); showToast('Added to watchlist'); }
-      else { watchlist.splice(idx, 1); showToast('Removed from watchlist'); }
+      else            { watchlist.splice(idx, 1); showToast('Removed from watchlist'); }
       localStorage.setItem('dht_watchlist_v2', JSON.stringify({ movies: watchlist.map(String), shows: [] }));
       updateWatchlistBtn();
     });
 
     function updateWatchlistBtn() {
-      const id = parseInt(movieId);
-      const saved = watchlist.includes(id);
+      const saved = watchlist.includes(parseInt(movieId));
       document.getElementById('watchlistBtn').classList.toggle('saved', saved);
       document.getElementById('watchlistBtnLabel').textContent = saved ? 'Saved ★' : 'Save to Watchlist';
     }
@@ -486,8 +473,8 @@
     async function fetchRelated(genre) {
       if (!genre) return;
       try {
-        const res = await fetch(`${WORKER}/movies?genre=${genre}&limit=12&sort_by=rating`);
-        const data = await res.json();
+        const res    = await fetch(`${WORKER}/movies?genre=${genre}&limit=12&sort_by=rating`);
+        const data   = await res.json();
         const movies = (data.data?.movies || []).filter(m => String(m.id) !== movieId).slice(0, 10);
         if (!movies.length) return;
         document.getElementById('relatedSection').style.display = 'block';
@@ -500,12 +487,13 @@
             </div>
           </div>
         `).join('');
-      } catch(e) { /* silently skip */ }
+      } catch { /* silently skip */ }
     }
 
     function showToast(msg) {
       const t = document.getElementById('toast');
-      t.textContent = msg; t.classList.add('show');
+      t.textContent = msg;
+      t.classList.add('show');
       clearTimeout(t._timer);
       t._timer = setTimeout(() => t.classList.remove('show'), 2200);
     }
